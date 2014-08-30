@@ -1,7 +1,7 @@
 This project contains code to display IFF/ILBM files (as used on the Amiga)
 and display them in HTML5 browser using Javascript + Canvas.
 
-The project is described here http://wiesmann.codiferes.net/wordpress/?page_id=17479
+The project is described on <a href="http://wiesmann.codiferes.net/wordpress/?page_id=17479">my blog</a>.
 
 The library currently handles the following image types:
 
@@ -18,3 +18,5 @@ The library handles the following features:
 * Colour-palette animations
 * Textual annotations
 * Proper scaling of 4 bit palettes
+
+[![Flattr this git repo](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=thiaswiesmann&url=https://github.com/wiesmann/ilbm.js&title=ilbm.js&language=EN&tags=github&category=software)
