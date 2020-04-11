@@ -545,9 +545,10 @@ function resolveEHBPixel(iff, value) {
  * Resolves a RGB24 encoded value into a correct color.
  */
 function resolveRGB24Pixel(value) {
-  var red = (value & 0xff0000) >> 16;
+  // fixed by mrupp for his TAWS project
+  var red = value & 0xff;
   var green = (value & 0xff00) >> 8;
-  var blue = value & 0xff;
+  var blue = (value & 0xff0000) >> 16;
   return [red, green, blue, 255];
 }
 
