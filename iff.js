@@ -89,8 +89,13 @@ function setUpCanvas(iff) {
   } else {
     var ratio = 1;
   }
-  iff.effective_width = iff.width * Math.max(ratio, 1);
-  iff.effective_height = iff.height / Math.min(ratio, 1);
+
+  // fixed by mrupp for his TAWS project
+  var ratioX = Math.ceil(ratio); // must always be an integer
+  var ratioY = iff.x_aspect / (ratioX * iff.y_aspect); // calc ratioY according to ratioX
+  iff.effective_width = iff.width * ratioX;
+  iff.effective_height = iff.height / ratioY;
+
   /* Size target canvas to effective size */
   // fixed by mrupp for his TAWS project
   iff.canvas.height = iff.effective_height;
