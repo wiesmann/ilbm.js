@@ -267,13 +267,13 @@ function parseIffCRNG(iff, start, length) {
   var animation = new Object();
   animation.rate = dataView.getUint16(2);
   var flags = dataView.getUint16(4);
-  animation.active = flags & 1;
+  animation.active = !!animation.rate && (flags & 1); // rate == 0 --> deactivate
   animation.reverse = flags & 2;
   animation.timestamp = 0;
   if (animation.rate) {
-    animation.delay_sec = 16384 / (animation.rate * 60);
+    animation.delay_sec = 16384 / (animation.rate * 50); // 50 Hz for PAL
   } else {
-    animation.delay_sec = 1;
+    animation.delay_sec = 0;
   }
   debugIff(iff, 'Animation active: ' + Boolean(animation.active));
   animation.lower = dataView.getUint8(6);
@@ -284,7 +284,7 @@ function parseIffCRNG(iff, start, length) {
     debugIff(iff, 'Range: x' + animation.lower.toString(16) + ' -> x' + animation.upper.toString(16));
     debugIff(iff, 'Reverse: ' + Boolean(animation.reverse));
     iff.color_animations.push(animation);
-    for (var i = animation.lower; i < animation.upper; i++) {
+    for (var i = animation.lower; i <= animation.upper; i++) {
       iff.cmap_overlay[i] = i;
     }
   }
@@ -308,8 +308,8 @@ function UpdateColorOverLay(iff) {
     if (animation.reverse == 2) {
       increment = 1;
     }
-    var diff = animation.upper - animation.lower;
-    for (var j = animation.lower; j < animation.upper; j++) {
+    var diff = animation.upper - animation.lower + 1;
+    for (var j = animation.lower; j <= animation.upper; j++) {
       var value = iff.cmap_overlay[j] + increment;
       if (value >= animation.upper) {
         value -= diff;
