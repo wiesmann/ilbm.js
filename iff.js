@@ -30,11 +30,11 @@
  */
 
 // Polyfill for window.requestAnimationFrame
-window.requestAnimFrame = (function(callback) {
+window.requestAnimFrame = (function (callback) {
   return window.requestAnimationFrame || window.webkitRequestAnimationFrame ||
-         window.mozRequestAnimationFrame || window.oRequestAnimationFrame ||
-         window.msRequestAnimationFrame ||
-    function(callback) {
+    window.mozRequestAnimationFrame || window.oRequestAnimationFrame ||
+    window.msRequestAnimationFrame ||
+    function (callback) {
       window.setTimeout(callback, 1000 / 60);
     };
 })();
@@ -89,11 +89,17 @@ function setUpCanvas(iff) {
   } else {
     var ratio = 1;
   }
-  iff.effective_width = iff.width * Math.max(ratio, 1);
-  iff.effective_height = iff.height / Math.min(ratio, 1);
+
+  // fixed by mrupp for his TAWS project
+  var ratioX = Math.ceil(ratio); // must always be an integer
+  var ratioY = iff.x_aspect / (ratioX * iff.y_aspect); // calc ratioY according to ratioX
+  iff.effective_width = iff.width * ratioX;
+  iff.effective_height = iff.height / ratioY;
+
   /* Size target canvas to effective size */
-  iff_canvas.height = iff.effective_height
-  iff_canvas.width = iff.effective_width;
+  // fixed by mrupp for his TAWS project
+  iff.canvas.height = iff.effective_height;
+  iff.canvas.width = iff.effective_width;
 }
 
 /*
@@ -185,7 +191,7 @@ function parseIffCMAP(iff, start, length) {
     iff.cmap[i][3] = 255;
   }
   iff.cmap_bits = 0;
-  while(iff.cmap.length > (1 << iff.cmap_bits)) {
+  while (iff.cmap.length > (1 << iff.cmap_bits)) {
     iff.cmap_bits++;
   }
   var scaled = isCMAPScaled(iff);
@@ -235,7 +241,7 @@ function parseIffCAMG(iff, start, length) {
   }
   if (iff.mode.ham && iff.cmap_bits > iff.bitplanes - 2) {
     var delta = (iff.cmap_bits - iff.bitplanes + 2);
-    iff.cmap_bits-= delta;
+    iff.cmap_bits -= delta;
     debugIff(iff, 'Culling color map to ' + iff.cmap_bits + ' bits for HAM');
     iff.cmap.length = iff.cmap.length >> delta;
     iff.cmap_overlay.length = iff.cmap.length;
@@ -261,13 +267,13 @@ function parseIffCRNG(iff, start, length) {
   var animation = new Object();
   animation.rate = dataView.getUint16(2);
   var flags = dataView.getUint16(4);
-  animation.active = flags & 1;
+  animation.active = !!animation.rate && (flags & 1); // rate == 0 --> deactivate
   animation.reverse = flags & 2;
   animation.timestamp = 0;
   if (animation.rate) {
-    animation.delay_sec = 16384 / (animation.rate * 60);
+    animation.delay_sec = 16384 / (animation.rate * 50); // 50 Hz for PAL
   } else {
-    animation.delay_sec = 1;
+    animation.delay_sec = 0;
   }
   debugIff(iff, 'Animation active: ' + Boolean(animation.active));
   animation.lower = dataView.getUint8(6);
@@ -278,7 +284,7 @@ function parseIffCRNG(iff, start, length) {
     debugIff(iff, 'Range: x' + animation.lower.toString(16) + ' -> x' + animation.upper.toString(16));
     debugIff(iff, 'Reverse: ' + Boolean(animation.reverse));
     iff.color_animations.push(animation);
-    for (var i = animation.lower; i < animation.upper; i++) {
+    for (var i = animation.lower; i <= animation.upper; i++) {
       iff.cmap_overlay[i] = i;
     }
   }
@@ -302,8 +308,8 @@ function UpdateColorOverLay(iff) {
     if (animation.reverse == 2) {
       increment = 1;
     }
-    var diff = animation.upper - animation.lower;
-    for (var j = animation.lower; j < animation.upper; j++) {
+    var diff = animation.upper - animation.lower + 1;
+    for (var j = animation.lower; j <= animation.upper; j++) {
       var value = iff.cmap_overlay[j] + increment;
       if (value >= animation.upper) {
         value -= diff;
@@ -338,7 +344,7 @@ function parsePCHG(iff, start, length) {
   debugIff(iff, 'Compression: ' + compression);
   var flags = dataView.getUint16(2);
   var start_line = dataView.getInt16(4);
-  var line_count =  dataView.getUint16(6);
+  var line_count = dataView.getUint16(6);
   debugIff(iff, 'Lines: ' + start_line + ' (' + line_count + ')');
   var min_register = dataView.getUint16(8);
   var max_register = dataView.getUint16(10);
@@ -397,7 +403,7 @@ function parsePCHG(iff, start, length) {
 function dePack(dataView, length, buffer) {
   var input_offset = 0;
   var output_offset = 0;
-  while(input_offset < length - 1) {
+  while (input_offset < length - 1) {
     var control = dataView.getInt8(input_offset);
     input_offset++;
     if (control > 0) {
@@ -461,11 +467,11 @@ function parseIffBody(iff, start, length) {
   var bit_buffer = new Array(iff.height * iff.row_bytes * iff.bitplanes);
   if (iff.compress) {
     var bit_buffer_size = dePack(dataView, length, bit_buffer);
-    var compression = 1 - (length / bit_buffer_size) ;
+    var compression = 1 - (length / bit_buffer_size);
     debugIff(iff, 'Compression ' + (compression * 100).toFixed(2) + '%')
     debugIff(iff, 'Depacked size: ' + bit_buffer_size);
   } else {
-    for(var i = 0; i < length; i++) {
+    for (var i = 0; i < length; i++) {
       bit_buffer[i] = dataView.getUint8(i);
     }
   }
@@ -509,7 +515,7 @@ function parseIffChunk(iff, start, length) {
       offset += 1;
     }
     iff.chunk = undefined;
-  } while(offset < (length - 8) && (start + offset + 8) < iff.arrayBuffer.byteLength);
+  } while (offset < (length - 8) && (start + offset + 8) < iff.arrayBuffer.byteLength);
 }
 
 
@@ -544,9 +550,10 @@ function resolveEHBPixel(iff, value) {
  * Resolves a RGB24 encoded value into a correct color.
  */
 function resolveRGB24Pixel(value) {
-  var red = (value & 0xff0000) >> 16;
+  // fixed by mrupp for his TAWS project
+  var red = value & 0xff;
   var green = (value & 0xff00) >> 8;
-  var blue = value & 0xff;
+  var blue = (value & 0xff0000) >> 16;
   return [red, green, blue, 255];
 }
 
@@ -647,12 +654,12 @@ function drawIffImage(iff) {
       }
     }
   }
-  render_ctx.putImageData(target,0,0);
+  render_ctx.putImageData(target, 0, 0);
   /* Now render the image into the effective display target, with effective sizes */
   iff.display_ctx = iff.canvas.getContext("2d");
   iff.display_ctx.drawImage(
-      iff.render_canvas, 0, 0, iff.width, iff.height, 0, 0,
-      iff.effective_width, iff.effective_height);
+    iff.render_canvas, 0, 0, iff.width, iff.height, 0, 0,
+    iff.effective_width, iff.effective_height);
 }
 
 /*
@@ -669,7 +676,7 @@ function animateIffImage(iff) {
     var dirty_x2 = 0;
     var dirty_y2 = 0;
     for (var y = 0; y < iff.height; y++) {
-     for (var x = 0; x < iff.width; x++) {
+      for (var x = 0; x < iff.width; x++) {
         var in_offset = y * iff.width + x;
         var out_offset = y * iff.width + x;
         var value = iff.buffer[in_offset];
@@ -684,13 +691,13 @@ function animateIffImage(iff) {
           dirty_x2 = Math.max(dirty_x2, 0);
           dirty_y2 = Math.max(dirty_y2, 0);
         }
-     }
+      }
     }
     var dirty_width = iff.width - dirty_x2;
     var dirty_height = iff.height - dirty_y2;
     render_ctx.putImageData(target, 0, 0, dirty_x1, dirty_y1, dirty_width, dirty_height);
     iff.display_ctx.drawImage(iff.render_canvas, 0, 0, iff.width, iff.height, 0, 0,
-                       iff.effective_width, iff.effective_height);
+      iff.effective_width, iff.effective_height);
   }
   window.requestAnimFrame(function () { animateIffImage(iff); });
 }
@@ -704,8 +711,8 @@ function IffContainer(canvas_id) {
   this.mode = new Object();
   this.color_animations = new Array();
   this.color_change_lists = new Array();
-  this.transparent_color = [0,0,0,0];
-  this.black_color = [0,0,0,255];
+  this.transparent_color = [0, 0, 0, 0];
+  this.black_color = [0, 0, 0, 255];
   this.debug_element = document.getElementById(canvas_id + "_debug");
 }
 
@@ -714,7 +721,7 @@ function IffContainer(canvas_id) {
  */
 function reportError(xhr, path, target_canvas) {
   target_canvas.style.cursor = 'default';
-  var text = 'Error loading from ' + path +' : ' +  xhr.statusText;
+  var text = 'Error loading from ' + path + ' : ' + xhr.statusText;
   target_canvas.title = text;
   var context = target_canvas.getContext("2d");
   context.fillText(text, 5, 20);
@@ -733,12 +740,12 @@ function loadIffImage(path, canvas_id, animate) {
   var xhr = new XMLHttpRequest();
   xhr.open('GET', path, true);
   xhr.responseType = 'arraybuffer';
-  xhr.onload = function(event) {
+  xhr.onload = function (event) {
     iff.arrayBuffer = xhr.response;
     if (iff.arrayBuffer && xhr.status < 400) {
       parseIffChunk(iff, 0, iff.arrayBuffer.byteLength);
       // Give the browser a chance to do something.
-      window.setTimeout(function() {
+      window.setTimeout(function () {
         drawIffImage(iff);
         iff.canvas.style.cursor = 'default'
         if (iff.color_animations.length > 0 && animate) {
