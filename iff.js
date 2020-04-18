@@ -734,7 +734,7 @@ function reportError(xhr, path, target_canvas) {
  * • animate if true, and there are some active animations in the file
  *   animations are started.
  */
-function loadIffImage(path, canvas_id, animate) {
+function loadIffImage(path, canvas_id, animate, onFinishedDelegate) {
   var iff = new IffContainer(canvas_id);
   iff.canvas.style.cursor = 'wait';
   var xhr = new XMLHttpRequest();
@@ -748,6 +748,17 @@ function loadIffImage(path, canvas_id, animate) {
       iff.canvas.style.cursor = 'default'
       if (iff.color_animations.length > 0 && animate) {
         animateIffImage(iff);
+      }
+      // added by mrupp
+      if (onFinishedDelegate) {
+        switch (typeof onFinishedDelegate) {
+          case 'function':
+            onFinishedDelegate(iff);
+            break;
+          case 'string':
+            eval(onFinishedDelegate);
+            break;
+        }
       }
     } else {
       reportError(xhr, path, iff.canvas);
