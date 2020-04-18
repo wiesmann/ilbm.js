@@ -744,14 +744,11 @@ function loadIffImage(path, canvas_id, animate) {
     iff.arrayBuffer = xhr.response;
     if (iff.arrayBuffer && xhr.status < 400) {
       parseIffChunk(iff, 0, iff.arrayBuffer.byteLength);
-      // Give the browser a chance to do something.
-      window.setTimeout(function () {
-        drawIffImage(iff);
-        iff.canvas.style.cursor = 'default'
-        if (iff.color_animations.length > 0 && animate) {
-          animateIffImage(iff);
-        }
-      }, 100);
+      drawIffImage(iff);
+      iff.canvas.style.cursor = 'default'
+      if (iff.color_animations.length > 0 && animate) {
+        animateIffImage(iff);
+      }
     } else {
       reportError(xhr, path, iff.canvas);
     }
