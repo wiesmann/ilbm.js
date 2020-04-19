@@ -324,6 +324,22 @@ function UpdateColorOverLay(iff) {
 }
 
 /**
+ * Resets the overlay used to handle color palette animations to its initial state.
+ * (added by mrupp)
+ */
+function ResetColorOverLay(iff) {
+  var now = new Date().getTime();
+  for (var i = 0; i < iff.color_animations.length; i++) {
+    var animation = iff.color_animations[i];
+    animation.timestamp = now;
+    for (var j = animation.lower; j <= animation.upper; j++) {
+      iff.cmap_overlay[j] = j;
+    }
+  }
+  return true;
+}
+
+/**
  * Constructor for a ColorChange happening between lines.
  */
 function ColorChange(data, register_offset) {
@@ -665,8 +681,9 @@ function drawIffImage(iff) {
 /*
  * Animate the image.
  */
-function animateIffImage(iff) {
-  var did_update = UpdateColorOverLay(iff);
+function animateIffImage(iff, reset) {
+  // 'reset' parameter added by mrupp
+  var did_update = reset ? ResetColorOverLay(iff) : UpdateColorOverLay(iff);
   if (did_update) {
     var render_ctx = iff.render_canvas.getContext("2d");
     var target = render_ctx.getImageData(0, 0, iff.width, iff.height);
@@ -699,7 +716,10 @@ function animateIffImage(iff) {
     iff.display_ctx.drawImage(iff.render_canvas, 0, 0, iff.width, iff.height, 0, 0,
       iff.effective_width, iff.effective_height);
   }
-  window.requestAnimFrame(function () { animateIffImage(iff); });
+  // 'if' added by mrupp
+  if (iff.colorCycling && !reset) {
+    window.requestAnimFrame(function () { animateIffImage(iff); });
+  }
 }
 
 /**
@@ -714,6 +734,26 @@ function IffContainer(canvas_id) {
   this.transparent_color = [0, 0, 0, 0];
   this.black_color = [0, 0, 0, 255];
   this.debug_element = document.getElementById(canvas_id + "_debug");
+
+  // added by mrupp for his TAWS project
+  this.colorCycling = false;
+  this.startColorCycling = () => {
+    if (this.color_animations.length > 0) {
+      this.colorCycling = true;
+      animateIffImage(this);
+    }
+    return this.colorCycling;
+  }
+  this.pauseColorCycling = () => {
+    this.colorCycling = false;
+  }
+  this.stopColorCycling = () => {
+    this.colorCycling = false;
+    animateIffImage(this, true); // resets the color overlay
+  }
+  this.isColorCycling = () => {
+    return this.colorCycling;
+  }
 }
 
 /**
@@ -735,6 +775,7 @@ function reportError(xhr, path, target_canvas) {
  *   animations are started.
  */
 function loadIffImage(path, canvas_id, animate, onFinishedDelegate) {
+  // 'onFinishedDelegate' parameter added by mrupp
   var iff = new IffContainer(canvas_id);
   iff.canvas.style.cursor = 'wait';
   var xhr = new XMLHttpRequest();
@@ -747,7 +788,7 @@ function loadIffImage(path, canvas_id, animate, onFinishedDelegate) {
       drawIffImage(iff);
       iff.canvas.style.cursor = 'default'
       if (iff.color_animations.length > 0 && animate) {
-        animateIffImage(iff);
+        iff.startColorCycling();
       }
       // added by mrupp
       if (onFinishedDelegate) {
