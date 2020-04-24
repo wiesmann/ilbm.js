@@ -737,23 +737,47 @@ function IffContainer(canvas_id) {
 
   // added by mrupp for his TAWS project
   this.colorCycling = false;
+  this.isColorCycling = () => {
+    return this.colorCycling;
+  };
+
+  this.colorCyclingPaused = false;
+  this.isColorCyclingPaused = () => {
+    return this.colorCyclingPaused;
+  };
+
   this.startColorCycling = () => {
     if (this.color_animations.length > 0) {
       this.colorCycling = true;
+      if (this.colorCyclingPaused) {
+        this.colorCyclingPaused = false;
+        animateIffImage(this, true);
+      }
       animateIffImage(this);
     }
     return this.colorCycling;
-  }
+  };
+
   this.pauseColorCycling = () => {
-    this.colorCycling = false;
-  }
+    if (this.color_animations.length > 0) {
+      if (this.colorCycling) {
+        this.colorCycling = false;
+        this.colorCyclingPaused = true;
+      }
+      else if (this.colorCyclingPaused) {
+        this.colorCyclingPaused = false;
+        this.startColorCycling();
+      }
+    }
+  };
+
   this.stopColorCycling = () => {
-    this.colorCycling = false;
-    animateIffImage(this, true); // resets the color overlay
-  }
-  this.isColorCycling = () => {
-    return this.colorCycling;
-  }
+    if (this.color_animations.length > 0) {
+      this.colorCyclingPaused = false;
+      this.colorCycling = false;
+      animateIffImage(this, true); // resets the color overlay
+    }
+  };
 }
 
 /**
