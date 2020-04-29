@@ -737,16 +737,16 @@ function IffContainer(canvas_id) {
 
   // added by mrupp for his TAWS project
   this.colorCycling = false;
-  this.isColorCycling = () => {
+  this.isColorCycling = function () {
     return this.colorCycling;
   };
 
   this.colorCyclingPaused = false;
-  this.isColorCyclingPaused = () => {
+  this.isColorCyclingPaused = function () {
     return this.colorCyclingPaused;
   };
 
-  this.startColorCycling = () => {
+  this.startColorCycling = function () {
     if (this.color_animations.length > 0) {
       this.colorCycling = true;
       if (this.colorCyclingPaused) {
@@ -758,7 +758,7 @@ function IffContainer(canvas_id) {
     return this.colorCycling;
   };
 
-  this.pauseColorCycling = () => {
+  this.pauseColorCycling = function () {
     if (this.color_animations.length > 0) {
       if (this.colorCycling) {
         this.colorCycling = false;
@@ -771,7 +771,7 @@ function IffContainer(canvas_id) {
     }
   };
 
-  this.stopColorCycling = () => {
+  this.stopColorCycling = function () {
     if (this.color_animations.length > 0) {
       this.colorCyclingPaused = false;
       this.colorCycling = false;
