@@ -586,7 +586,7 @@ function resolveRGB24Pixel(value) {
  */
 function resolvePixels(iff, value, previous_color) {
   if (value == undefined) {
-    value = iff.transparent_index
+    value = 0; // fixed by mrupp for his TAWS project
   }
   // by mrupp: 'transparency' and support for iff.masking == 3
   if (iff.transparency && (iff.masking == 2 || iff.masking == 3) && value == iff.transparent_index) {
