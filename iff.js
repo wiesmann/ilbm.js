@@ -484,14 +484,21 @@ function parseIffBody(iff, start, length) {
   if (iff.compress) {
     var bit_buffer_size = dePack(dataView, length, bit_buffer);
     var compression = 1 - (length / bit_buffer_size);
-    debugIff(iff, 'Compression ' + (compression * 100).toFixed(2) + '%')
+    debugIff(iff, 'Compression ' + (compression * 100).toFixed(2) + '%');
     debugIff(iff, 'Depacked size: ' + bit_buffer_size);
   } else {
     for (var i = 0; i < length; i++) {
       bit_buffer[i] = dataView.getUint8(i);
     }
   }
-  bitPlaneToPixBuffer(iff, bit_buffer);
+
+  // added PBM support by mrupp for his TAWS project
+  if (iff.scope == 'PBM ') {
+    iff.buffer = bit_buffer;
+  }
+  else {
+    bitPlaneToPixBuffer(iff, bit_buffer);
+  }
 }
 
 /**
@@ -797,6 +804,7 @@ function reportError(xhr, path, target_canvas) {
  * • canvas_id is the CSS id of the canvas to draw into.
  * • animate if true, and there are some active animations in the file
  *   animations are started.
+ * • onFinishedDelegate to be called after loading has finished
  */
 function loadIffImage(path, canvas_id, animate, onFinishedDelegate) {
   // 'onFinishedDelegate' parameter added by mrupp
