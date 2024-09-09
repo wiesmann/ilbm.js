@@ -484,14 +484,21 @@ function parseIffBody(iff, start, length) {
   if (iff.compress) {
     var bit_buffer_size = dePack(dataView, length, bit_buffer);
     var compression = 1 - (length / bit_buffer_size);
-    debugIff(iff, 'Compression ' + (compression * 100).toFixed(2) + '%')
+    debugIff(iff, 'Compression ' + (compression * 100).toFixed(2) + '%');
     debugIff(iff, 'Depacked size: ' + bit_buffer_size);
   } else {
     for (var i = 0; i < length; i++) {
       bit_buffer[i] = dataView.getUint8(i);
     }
   }
-  bitPlaneToPixBuffer(iff, bit_buffer);
+
+  // added PBM support by mrupp for his TAWS project
+  if (iff.scope == 'PBM ') {
+    iff.buffer = bit_buffer;
+  }
+  else {
+    bitPlaneToPixBuffer(iff, bit_buffer);
+  }
 }
 
 /**
@@ -579,11 +586,11 @@ function resolveRGB24Pixel(value) {
  */
 function resolvePixels(iff, value, previous_color) {
   if (value == undefined) {
-    value = iff.transparent_index
+    value = 0; // fixed by mrupp for his TAWS project
   }
-  if (iff.masking == 2 && value == iff.transparent_index) {
-    // This breaks some images.
-    // return iff.transparent_color;
+  // by mrupp: 'transparency' and support for iff.masking == 3
+  if (iff.transparency && (iff.masking == 2 || iff.masking == 3) && value == iff.transparent_index) {
+    return iff.transparent_color;
   }
   if (iff.cmap == undefined) {
     /* Not color map, must be absolute 24 bits RGB */
@@ -725,7 +732,7 @@ function animateIffImage(iff, reset) {
 /**
  * Constructor for the root object that contains all the data in the IFF file.
  */
-function IffContainer(canvas_id) {
+function IffContainer(canvas_id, transparency) {
   this.canvas = document.getElementById(canvas_id);
   this.scope = '';
   this.mode = new Object();
@@ -736,6 +743,7 @@ function IffContainer(canvas_id) {
   this.debug_element = document.getElementById(canvas_id + "_debug");
 
   // added by mrupp for his TAWS project
+  this.transparency = transparency;
   this.colorCycling = false;
   this.isColorCycling = function () {
     return this.colorCycling;
@@ -797,10 +805,12 @@ function reportError(xhr, path, target_canvas) {
  * • canvas_id is the CSS id of the canvas to draw into.
  * • animate if true, and there are some active animations in the file
  *   animations are started.
+ * • onFinishedDelegate to be called after loading has finished
+ * • support transparency on palette based images if true
  */
-function loadIffImage(path, canvas_id, animate, onFinishedDelegate) {
-  // 'onFinishedDelegate' parameter added by mrupp
-  var iff = new IffContainer(canvas_id);
+function loadIffImage(path, canvas_id, animate, onFinishedDelegate, transparency) {
+  // 'onFinishedDelegate' and 'transparency' parameters added by mrupp
+  var iff = new IffContainer(canvas_id, transparency);
   iff.canvas.style.cursor = 'wait';
   var xhr = new XMLHttpRequest();
   xhr.open('GET', path, true);
